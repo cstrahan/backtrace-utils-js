@@ -365,6 +365,120 @@ describe('result', () => {
         });
     });
 
+    describe('match', () => {
+        it('should call onOk callback for ok result', () => {
+            const result = Result.ok<number, string>(42);
+
+            const actual = Result.match(
+                result,
+                (data) => `success: ${data}`,
+                (err) => `error: ${err}`,
+            );
+
+            expect(actual).toBe('success: 42');
+        });
+
+        it('should call onErr callback for err result', () => {
+            const result = Result.err<string, number>('something went wrong');
+
+            const actual = Result.match(
+                result,
+                (data) => `success: ${data}`,
+                (err) => `error: ${err}`,
+            );
+
+            expect(actual).toBe('error: something went wrong');
+        });
+
+        it('should handle async onOk callback', async () => {
+            const result = Result.ok<number, string>(42);
+
+            const actual = await Result.match(
+                result,
+                async (data) => `success: ${data}`,
+                async (err) => `error: ${err}`,
+            );
+
+            expect(actual).toBe('success: 42');
+        });
+
+        it('should handle async onErr callback', async () => {
+            const result = Result.err<string, number>('failed');
+
+            const actual = await Result.match(
+                result,
+                async (data) => `success: ${data}`,
+                async (err) => `error: ${err}`,
+            );
+
+            expect(actual).toBe('error: failed');
+        });
+
+        it('should return different types based on callbacks', () => {
+            const okResult = Result.ok<number, string>(10);
+            const errResult = Result.err<string, number>('error');
+
+            const okActual = Result.match(
+                okResult,
+                (data) => data * 2,
+                () => -1,
+            );
+
+            const errActual = Result.match(
+                errResult,
+                (data) => data * 2,
+                () => -1,
+            );
+
+            expect(okActual).toBe(20);
+            expect(errActual).toBe(-1);
+        });
+    });
+
+    describe('curried match', () => {
+        it('should work with pipe for ok result', () => {
+            const result = Result.ok<number, string>(42);
+
+            const actual = pipe(
+                result,
+                Result.match(
+                    (data) => `success: ${data}`,
+                    (err) => `error: ${err}`,
+                ),
+            );
+
+            expect(actual).toBe('success: 42');
+        });
+
+        it('should work with pipe for err result', () => {
+            const result = Result.err<string, number>('failed');
+
+            const actual = pipe(
+                result,
+                Result.match(
+                    (data) => `success: ${data}`,
+                    (err) => `error: ${err}`,
+                ),
+            );
+
+            expect(actual).toBe('error: failed');
+        });
+
+        it('should work with pipe for async callbacks', async () => {
+            const result = Result.ok<number, string>(42);
+
+            const actual = await pipe(
+                result,
+                Result.match(
+                    async (data) => `success: ${data}`,
+                    async (err) => `error: ${err}`,
+                ),
+            );
+
+            expect(actual).toBe('success: 42');
+        });
+    });
+
     describe('tryCatch', () => {
         it('should return ok result if function does not throw', () => {
             const fn = () => 'abc';

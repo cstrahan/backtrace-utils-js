@@ -179,6 +179,47 @@ class ResultFunctions {
         return ResultFunctions.ok(data);
     }
 
+    public static match<T, E, R>(
+        onOk: Map<T, Promise<R>>,
+        onErr: Map<E, Promise<R>>,
+    ): (result: Result<T, E>) => Promise<R>;
+    public static match<T, E, R>(onOk: Map<T, R>, onErr: Map<E, R>): (result: Result<T, E>) => R;
+    public static match<T, E, R>(
+        onOk: Map<T, MaybePromise<R>>,
+        onErr: Map<E, MaybePromise<R>>,
+    ): (result: Result<T, E>) => MaybePromise<R>;
+    public static match<T, E, R>(result: Result<T, E>, onOk: Map<T, Promise<R>>, onErr: Map<E, Promise<R>>): Promise<R>;
+    public static match<T, E, R>(result: Result<T, E>, onOk: Map<T, R>, onErr: Map<E, R>): R;
+    public static match<T, E, R>(
+        result: Result<T, E>,
+        onOk: Map<T, MaybePromise<R>>,
+        onErr: Map<E, MaybePromise<R>>,
+    ): MaybePromise<R>;
+    public static match<T, E, R>(
+        resultOrOnOk: Result<T, E> | Map<T, MaybePromise<R>>,
+        onOkOrOnErr: Map<T, MaybePromise<R>> | Map<E, MaybePromise<R>>,
+        onErr?: Map<E, MaybePromise<R>>,
+    ): MaybePromise<R> | ((result: Result<T, E>) => MaybePromise<R>) {
+        const match = (result: Result<T, E>, onOk: Map<T, MaybePromise<R>>, onErr: Map<E, MaybePromise<R>>) => {
+            if (ResultFunctions.isOk(result)) {
+                return onOk(result.data);
+            }
+            return onErr(result.data);
+        };
+
+        if (typeof resultOrOnOk === 'function') {
+            const onOk = resultOrOnOk;
+            const onErrFn = onOkOrOnErr as Map<E, MaybePromise<R>>;
+            return (result: Result<T, E>) => match(result, onOk, onErrFn);
+        }
+
+        if (!onErr) {
+            throw new Error('onErr must be provided');
+        }
+
+        return match(resultOrOnOk, onOkOrOnErr as Map<T, MaybePromise<R>>, onErr);
+    }
+
     public static tryCatch<T>(fn: () => Promise<T>): Promise<Result<T, Error>>;
     public static tryCatch<T>(fn: () => T): Result<T, Error>;
     public static tryCatch<T>(fn: () => MaybePromise<T>): MaybePromise<Result<T, Error>> {
