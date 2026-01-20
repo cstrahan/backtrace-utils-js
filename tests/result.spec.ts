@@ -363,6 +363,76 @@ describe('result', () => {
 
             expect(actual).toEqual(expected);
         });
+
+        it('should preserve tuple types for strongly-typed tuple input', () => {
+            const r1 = Result.ok<number, string>(42);
+            const r2 = Result.ok<string, string>('hello');
+            const r3 = Result.ok<boolean, string>(true);
+
+            const actual = Result.flat([r1, r2, r3]);
+
+            // Runtime check
+            expect(Result.isOk(actual)).toBe(true);
+            expect(actual.data).toEqual([42, 'hello', true]);
+
+            // Compile-time type check: if this compiles, the tuple type is preserved
+            if (Result.isOk(actual)) {
+                const [num, str, bool]: [number, string, boolean] = actual.data;
+                expect(num).toBe(42);
+                expect(str).toBe('hello');
+                expect(bool).toBe(true);
+            }
+        });
+
+        it('should preserve tuple types with mixed error types', () => {
+            const r1 = Result.ok<number, string>(1);
+            const r2 = Result.ok<string, Error>('test');
+
+            const actual = Result.flat([r1, r2]);
+
+            if (Result.isOk(actual)) {
+                const [num, str]: [number, string] = actual.data;
+                expect(num).toBe(1);
+                expect(str).toBe('test');
+            }
+        });
+
+        it('should return error with correct type from tuple', () => {
+            const r1 = Result.ok<number, string>(1);
+            const r2 = Result.err<string, string>('error message');
+            const r3 = Result.ok<boolean, string>(true);
+
+            const actual = Result.flat([r1, r2, r3]);
+
+            expect(Result.isErr(actual)).toBe(true);
+            if (Result.isErr(actual)) {
+                // Type should be string (union of error types)
+                const err: string = actual.data;
+                expect(err).toBe('error message');
+            }
+        });
+
+        it('should preserve readonly inner types while producing mutable tuple', () => {
+            const readonlyArray: readonly number[] = [1, 2, 3];
+            const r1 = Result.ok<readonly number[], string>(readonlyArray);
+            const r2 = Result.ok<string, string>('hello');
+
+            const actual = Result.flat([r1, r2]);
+
+            if (Result.isOk(actual)) {
+                // Compile-time check: inner readonly type is preserved
+                const [arr, str]: [readonly number[], string] = actual.data;
+                expect(arr).toEqual([1, 2, 3]);
+                expect(str).toBe('hello');
+
+                // This would fail to compile if readonly wasn't preserved:
+                // arr.push(4); // Error: Property 'push' does not exist on type 'readonly number[]'
+
+                // But the tuple itself is mutable (we can reassign indices):
+                actual.data[1] = 'world';
+                expect(actual.data[1]).toBe('world');
+            }
+        });
     });
 
     describe('tryCatch', () => {

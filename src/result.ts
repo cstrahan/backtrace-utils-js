@@ -18,6 +18,13 @@ export interface ResultErr<T> extends Kind<'result_err'> {
 export type Result<T, E> = ResultOk<T> | ResultErr<E>;
 export type ResultPromise<T, E> = Promise<Result<T, E>>;
 
+type FlatResultOk<T extends readonly Result<unknown, unknown>[]> = {
+    -readonly [K in keyof T]: T[K] extends Result<infer U, unknown> ? U : never;
+};
+
+type FlatResultErr<T extends readonly Result<unknown, unknown>[]> =
+    T[number] extends Result<unknown, infer E> ? E : never;
+
 class ResultFunctions {
     public static ok<T, E = never>(data: T): Result<T, E> {
         return { data, [KIND]: 'result_ok' };
@@ -166,17 +173,19 @@ class ResultFunctions {
         return mapErr(resultOrTransform, transform);
     }
 
-    public static flat<T, E>(results: Result<T, E>[]): Result<T[], E> {
-        const data: T[] = [];
+    public static flat<T extends readonly Result<unknown, unknown>[]>(
+        results: [...T],
+    ): Result<FlatResultOk<T>, FlatResultErr<T>> {
+        const data: unknown[] = [];
         for (const result of results) {
             if (ResultFunctions.isErr(result)) {
-                return result;
+                return result as Result<FlatResultOk<T>, FlatResultErr<T>>;
             }
 
             data.push(result.data);
         }
 
-        return ResultFunctions.ok(data);
+        return ResultFunctions.ok(data) as Result<FlatResultOk<T>, FlatResultErr<T>>;
     }
 
     public static tryCatch<T>(fn: () => Promise<T>): Promise<Result<T, Error>>;
