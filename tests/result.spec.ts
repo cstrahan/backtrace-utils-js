@@ -425,8 +425,9 @@ describe('result', () => {
                 expect(arr).toEqual([1, 2, 3]);
                 expect(str).toBe('hello');
 
-                // This would fail to compile if readonly wasn't preserved:
-                // arr.push(4); // Error: Property 'push' does not exist on type 'readonly number[]'
+                // This should NOT compile - readonly is preserved, so mutable number[] is incompatible
+                // @ts-expect-error: Type 'readonly number[]' is not assignable to type 'number[]'
+                const [_mutableArr, _str]: [number[], string] = actual.data;
 
                 // But the tuple itself is mutable (we can reassign indices):
                 actual.data[1] = 'world';
